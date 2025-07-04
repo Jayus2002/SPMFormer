@@ -8,7 +8,7 @@ import torch
 import sys
 sys.path.append('/home/benchunlei/dl/SPMFormer/')
 from torch.utils.data import Dataset
-# 由于方法在utils下的文件中，当前导入语句无需修改，因为它已经从utils模块导入所需方法
+
 from myutils import hwc_to_chw, read_img, read_img_test
 
 def load_image_paths(txt_file):

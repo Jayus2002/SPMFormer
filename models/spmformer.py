@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import math
 import numpy as np
+# import netron
 from torch.nn.init import _calculate_fan_in_and_fan_out
 from timm.models.layers import to_2tuple, trunc_normal_
 
@@ -14,8 +15,7 @@ from timm.models.layers import to_2tuple, trunc_normal_
 # v1.0 ->pe1 (+0.04) -> pe(K,B)
 #
 #
-##########################
-
+########################
 # 定义Revised LayerNorm类，用于实现修订后的层归一化操作
 class RLN(nn.Module):
     r"""Revised LayerNorm"""
@@ -339,6 +339,7 @@ class TransformerBlock(nn.Module):
         super().__init__()
         # 是否使用注意力机制的标志
         self.use_attn = use_attn
+        
         # 是否对MLP进行归一化的标志
         self.mlp_norm = mlp_norm
 
@@ -352,7 +353,6 @@ class TransformerBlock(nn.Module):
         self.norm2 = norm_layer(dim) if use_attn and mlp_norm else nn.Identity()
         # 定义多层感知机模块
         self.mlp = Mlp(network_depth, dim, hidden_features=int(dim * mlp_ratio))
-
     def forward(self, x):
         # 保存输入的副本
         identity = x
@@ -405,7 +405,7 @@ class BasicLayer(nn.Module):
         elif attn_loc == 'middle':
             # 如果注意力机制在中间部分使用，生成相应的标志列表
             use_attns = [i >= (depth - attn_depth) // 2 and i < (depth + attn_depth) // 2 for i in range(depth)]
-
+        # print("use_attns:",use_attns)
         # 构建Transformer块列表
         self.blocks = nn.ModuleList([
             TransformerBlock(network_depth=network_depth,
@@ -447,6 +447,19 @@ class PatchEmbed(nn.Module):
         return x
 
 # 定义补丁反嵌入类，用于将特征空间的特征反嵌入为图像
+
+"""
+nn.Conv2d：将嵌入特征映射到更高维度的空间
+输入通道：embed_dim
+输出通道：out_chans * patch_size ** 2（如3×4²=48）
+使用反射填充(padding_mode='reflect')保持空间尺寸
+nn.PixelShuffle：通过像素重排操作将特征图上采样
+将通道维度重排为空间维度，实现上采样
+输入：形状为 (B, embed_dim, H, W) 的特征图
+经过卷积后：形状变为 (B, out_chans*patch_size², H, W)
+经过PixelShuffle后：形状变为 (B, out_chans, H*patch_size, W*patch_size)
+最终输出尺寸是输入尺寸的 patch_size 倍
+"""
 class PatchUnEmbed(nn.Module):
     def __init__(self, patch_size=4, out_chans=3, embed_dim=96, kernel_size=None):
         super().__init__()
@@ -610,6 +623,7 @@ class PE(nn.Module):
         # x = self.bn2(x)
         # 输入通过第二个多层感知机模块并加上第二个卷积层的输出
         x = self.mlp2(x) + self.conv2(x_c)
+        # print("经过PE后的尺寸",x.shape)
         return x
 
 # 以下是被注释掉的PE48类的定义
@@ -666,7 +680,7 @@ class SPMFormer(nn.Module):
                  conv_type=['DWConv', 'DWConv', 'DWConv', 'DWConv', 'DWConv'],
                  norm_layer=[RLN, RLN, RLN, RLN, RLN]):
         super(SPMFormer, self).__init__()
-
+        
         # 设置补丁大小
         self.patch_size = 4
         # 设置窗口大小
@@ -786,6 +800,7 @@ class SPMFormer(nn.Module):
         #pe = torch.cat((b_pe,g_pe,r_pe), dim=1)
         # 对位置编码进行反嵌入
         paras = self.unpe(pe)
+        # print("paras的尺寸",paras.shape)
         # 分离参数K和B
         K, B = torch.split(paras, (3,3), dim = 1)
         # 对输入进行缩放和平移
@@ -845,10 +860,10 @@ class SPMFormer(nn.Module):
 
         # 对输入进行缩放和平移
         x = K * xc + B + xc
+        # print("K,B,xc的尺寸",K.shape,B.shape,xc.shape)
         # 裁剪输出到原始图像大小
         x = x[:, :, :H, :W]
         return x
-
 # 定义一个小版本的SPMFormer模型
 def spmformer_t():
     return SPMFormer(
@@ -868,3 +883,9 @@ def spmformer_b():
         num_heads=[2, 4, 6, 2],
         attn_ratio=[1 / 4, 1 / 2, 3 / 4, 0],
         conv_type=['DWConv', 'DWConv', 'DWConv', 'DWConv'])
+
+# if __name__ == '__main__':
+#     model = spmformer_b()
+#     input = torch.ones((1,3,256,256))
+#     torch.onnx.export(model, input, f='SPM.onnx')
+    # print(model)cle

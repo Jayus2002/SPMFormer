@@ -50,9 +50,9 @@ parser.add_argument('--data_dir', default='./dataset/', type=str, help='数据�
 # 添加日志保存路径参数
 parser.add_argument('--log_dir', default='./logs/', type=str, help='日志保存的路径')
 # 添加数据集名称参数
-parser.add_argument('--dataset', default='LSUI', type=str, help='数据集名称')
+parser.add_argument('--dataset', default='UIEB', type=str, help='数据集名称')
 # 添加实验设置参数
-parser.add_argument('--exp', default='lsui', type=str, help='实验设置')
+parser.add_argument('--exp', default='uieb', type=str, help='实验设置')
 # 添加使用的GPU编号参数
 parser.add_argument('--gpu', default='0', type=str, help='用于训练的GPU编号')
 # 解析命令行参数

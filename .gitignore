@@ -3,3 +3,6 @@ saved_models/
 results/LSUI/spmformer-b/imgs
 __pycache__/
 wandb/
+results/UIEB/spmformer-b/imgs
+datasets/__pycache__/
+.pyc

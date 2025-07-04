@@ -57,9 +57,9 @@ parser.add_argument('--save_dir', default='./saved_models/', type=str, help='模
 # 添加结果保存路径参数，默认值为'./results/'
 parser.add_argument('--result_dir', default='./results/', type=str, help='结果保存路径')
 # 添加数据集名称参数，默认值为'LSUI'
-parser.add_argument('--dataset', default='LSUI', type=str, help='数据集名称')
+parser.add_argument('--dataset', default='UIEB', type=str, help='数据集名称')
 # 添加实验设置参数，默认值为'lsui'
-parser.add_argument('--exp', default='lsui', type=str, help='实验设置')
+parser.add_argument('--exp', default='uieb', type=str, help='实验设置')
 # 解析命令行参数
 args = parser.parse_args()
 
