@@ -10,8 +10,8 @@ from timm.models.layers import to_2tuple, trunc_normal_
 import sys
 sys.path.append('/home/benchunlei/dl/SPMFormer/test')
 # from wavelets_test import HeightWidthDiagonalFeatureProcessor
-from conv_test import HeightWidthFeatureDepthwiseConv
-
+# from conv_test import HeightWidthFeatureDepthwiseConv
+from spatial_enhance import SpatialVarianceModulation
 
 """
 在trasform块中加小波变换残差    
@@ -368,14 +368,17 @@ class TransformerBlock(nn.Module):
         """
         # self.wavelet = HeightWidthDiagonalFeatureProcessor(input_channel_count=dim, output_channel_count=dim)
 
-        self.hwconv = HeightWidthFeatureDepthwiseConv(dim) 
+        # self.hwconv = HeightWidthFeatureDepthwiseConv(dim) 
+        self.spatial_enhance = SpatialVarianceModulation(dim)
     def forward(self, x):
         # 保存输入的副本
         identity = x
+        spatial_enhance = self.spatial_enhance(x)
+        # print("x:",spatial_enhance.shape)
         # print("x:",x.shape)
         # wavelet = self.wavelet(x)
         # print("wavalet:",wavelet.shape)
-        hwconv = self.hwconv(x)
+        # hwconv = self.hwconv(x)
         # print("X:",x.shape)
         # print("hwconv:",hwconv.shape)
         if self.use_attn:
@@ -387,7 +390,7 @@ class TransformerBlock(nn.Module):
             # 如果使用注意力机制，对注意力输出进行缩放和平移
             x = x * rescale + rebias
         # 残差连接
-        x = identity + x + hwconv
+        x = identity + x
 
         # 保存输入的副本
         identity = x
@@ -400,7 +403,7 @@ class TransformerBlock(nn.Module):
             # 如果使用注意力机制且需要对MLP进行归一化，对多层感知机输出进行缩放和平移
             x = x * rescale + rebias
         # 残差连接
-        x = identity + x
+        x = identity + x + spatial_enhance
         return x
 
 # 定义基础层类
@@ -906,8 +909,8 @@ def spmformer_b():
         attn_ratio=[1 / 4, 1 / 2, 3 / 4, 0],
         conv_type=['DWConv', 'DWConv', 'DWConv', 'DWConv'])
 
-if __name__ == '__main__':
-    model = spmformer_b()
-    input = torch.ones((1,3,256,256))
-    torch.onnx.export(model, input, f='SPM.onnx')
-    # print(model)cle
+# if __name__ == '__main__':
+#     model = spmformer_b()
+#     input = torch.ones((1,3,256,256))
+#     torch.onnx.export(model, input, f='SPM.onnx')
+#     # print(model)cle
