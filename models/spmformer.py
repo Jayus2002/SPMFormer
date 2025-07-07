@@ -11,8 +11,8 @@ import sys
 sys.path.append('/home/benchunlei/dl/SPMFormer/test')
 # from wavelets_test import HeightWidthDiagonalFeatureProcessor
 # from conv_test import HeightWidthFeatureDepthwiseConv
-from spatial_enhance import SpatialVarianceModulation
-
+from spatial_enhance import SpatialVarianceModulation #局部对比度增强
+from edffn import EDFFN # 高效判别频域模块
 """
 在trasform块中加小波变换残差    
 """
@@ -363,24 +363,22 @@ class TransformerBlock(nn.Module):
         self.norm2 = norm_layer(dim) if use_attn and mlp_norm else nn.Identity()
         # 定义多层感知机模块
         self.mlp = Mlp(network_depth, dim, hidden_features=int(dim * mlp_ratio))
-        """
-        加入小波变换残差
-        """
-        # self.wavelet = HeightWidthDiagonalFeatureProcessor(input_channel_count=dim, output_channel_count=dim)
 
+
+        """
+        高效判别频域模块
+        """
+        # self.mlp = EDFFN(dim, patch_size=window_size, network_depth=network_depth, ffn_expansion_factor=mlp_ratio)
+
+        # """
+        # 加入小波变换残差
+        # """
+        # self.wavelet = HeightWidthDiagonalFeatureProcessor(input_channel_count=dim, output_channel_count=dim)
         # self.hwconv = HeightWidthFeatureDepthwiseConv(dim) 
-        self.spatial_enhance = SpatialVarianceModulation(dim)
+        
     def forward(self, x):
-        # 保存输入的副本
+        # 保存输入的副本s
         identity = x
-        spatial_enhance = self.spatial_enhance(x)
-        # print("x:",spatial_enhance.shape)
-        # print("x:",x.shape)
-        # wavelet = self.wavelet(x)
-        # print("wavalet:",wavelet.shape)
-        # hwconv = self.hwconv(x)
-        # print("X:",x.shape)
-        # print("hwconv:",hwconv.shape)
         if self.use_attn:
             # 如果使用注意力机制，对输入进行归一化
             x, rescale, rebias = self.norm1(x)
@@ -398,12 +396,13 @@ class TransformerBlock(nn.Module):
             # 如果使用注意力机制且需要对MLP进行归一化，对输入进行归一化
             x, rescale, rebias = self.norm2(x)
         # 计算多层感知机输出
+        # print(x.shape)
         x = self.mlp(x)
         if self.use_attn and self.mlp_norm:
             # 如果使用注意力机制且需要对MLP进行归一化，对多层感知机输出进行缩放和平移
             x = x * rescale + rebias
         # 残差连接
-        x = identity + x + spatial_enhance
+        x = identity + x
         return x
 
 # 定义基础层类
@@ -417,6 +416,10 @@ class BasicLayer(nn.Module):
         self.dim = dim
         # 块的数量
         self.depth = depth
+        """
+        加入高频增强
+        """
+        
 
         # 计算使用注意力机制的块的数量
         attn_depth = attn_ratio * depth
@@ -431,6 +434,7 @@ class BasicLayer(nn.Module):
             # 如果注意力机制在中间部分使用，生成相应的标志列表
             use_attns = [i >= (depth - attn_depth) // 2 and i < (depth + attn_depth) // 2 for i in range(depth)]
         # print("use_attns:",use_attns)
+        self.spatial_enhance = SpatialVarianceModulation()
         # 构建Transformer块列表
         self.blocks = nn.ModuleList([
             TransformerBlock(network_depth=network_depth,
@@ -444,9 +448,10 @@ class BasicLayer(nn.Module):
             for i in range(depth)])
 
     def forward(self, x):
-        # 依次通过每个Transformer块
+        # 依次通过每个Transformer块 
         for blk in self.blocks:
             x = blk(x)
+        x = self.spatial_enhance(x)
         return x
 
 # 定义补丁嵌入类，用于将图像划分为补丁并嵌入到特征空间
@@ -716,6 +721,7 @@ class SPMFormer(nn.Module):
         # 定义补丁嵌入模块，将图像划分为补丁并嵌入到特征空间
         self.patch_embed = PatchEmbed(
             patch_size=1, in_chans=in_chans, embed_dim=embed_dims[0], kernel_size=3)
+        
 
         # 定义第一个基础层
         self.layer1 = BasicLayer(network_depth=sum(depths), dim=embed_dims[0], depth=depths[0],
@@ -909,8 +915,9 @@ def spmformer_b():
         attn_ratio=[1 / 4, 1 / 2, 3 / 4, 0],
         conv_type=['DWConv', 'DWConv', 'DWConv', 'DWConv'])
 
-# if __name__ == '__main__':
-#     model = spmformer_b()
-#     input = torch.ones((1,3,256,256))
-#     torch.onnx.export(model, input, f='SPM.onnx')
-#     # print(model)cle
+if __name__ == '__main__':
+    model = spmformer_b()
+    input = torch.ones((1,3,256,256))
+    # torch.onnx.export(model, input, f='SPM.onnx')
+    output = model(input)
+    # print(model)

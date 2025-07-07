@@ -24,17 +24,6 @@ import swanlab
 
 
 
-
-
-
-
-
-
-
-
-
-
-
 # 创建命令行参数解析器
 parser = argparse.ArgumentParser()
 # 添加模型名称参数
@@ -103,7 +92,7 @@ def fourier_loss(input_image, target_image):
     abs_loss = criterion(input_abs, target_abs)
     # 计算相位谱的损失
     ang_loss = criterion(input_ang, target_ang)
-
+    # print("傅里叶变换损失:",abs_loss,ang_loss)
     return abs_loss + ang_loss
 
 # 定义训练函数

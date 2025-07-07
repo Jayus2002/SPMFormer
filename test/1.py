@@ -29,6 +29,7 @@ class HighFrequencyGenerator(nn.Module):
         )
 
     def _get_dct_matrix(self, N: float) -> Tensor:
+        
         """生成DCT变换矩阵"""
         i, j = torch.meshgrid(torch.arange(N), torch.arange(N))
         alpha = torch.where(i == 0, 1.0, 2.0).sqrt() / N.sqrt()
